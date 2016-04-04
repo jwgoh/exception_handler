@@ -10,47 +10,60 @@ module ExceptionHandler
 
     ##################
 
-      #App (Application name)
-      def app
-        Rails.application.class.parent_name
-      end
+    #App (Application name)
+    def app
+      Rails.application.class.parent_name
+    end
 
-      #Details
-      def details
-        @details ||= {}.tap do |h|
-          I18n.with_options scope: [:exception, :show, @exception.response], message: @exception.message do |i18n|
-            h[:name]        = i18n.t "#{@exception.class.name.underscore}.title",       default: i18n.t(:title,       default: @exception.class.name)
-            h[:description] = i18n.t "#{@exception.class.name.underscore}.description", default: i18n.t(:description, default: @exception.message)
-          end
+    #Details
+    def details
+      @details ||= {}.tap do |h|
+        I18n.with_options scope: [:exception, :show, @exception.response], message: @exception.message do |i18n|
+          h[:name]        = i18n.t "#{@exception.class.name.underscore}.title",       default: i18n.t(:title,       default: @exception.class.name)
+          h[:description] = i18n.t "#{@exception.class.name.underscore}.description", default: i18n.t(:description, default: @exception.message)
         end
       end
+    end
 
-      #Social
-      def social *services
-        output = []
-        # options = args.extract_options! http://simonecarletti.com/blog/2009/09/inside-ruby-on-rails-extract_options-from-arrays/ - args for hash
+    #Social
+    def social *services
+      output = []
+      # options = args.extract_options! http://simonecarletti.com/blog/2009/09/inside-ruby-on-rails-extract_options-from-arrays/ - args for hash
 
-        services = ExceptionHandler.config.social unless services.any? #-> http://api.rubyonrails.org/classes/Hash.html#method-i-compact
-        services.except(:url).compact.each do |service,username| #-> except http://stackoverflow.com/a/11105831/1143732
-          output.push link_to(image_tag("exception_handler/connect/#{service}.png", title: "Find us on " + service.to_s.titleize), link(service), target: :blank, class: service.to_s)
-        end
-
-        output.join("").html_safe #-> ruby returns last line
+      services = ExceptionHandler.config.social unless services.any? #-> http://api.rubyonrails.org/classes/Hash.html#method-i-compact
+      services.except(:url).compact.each do |service,username| #-> except http://stackoverflow.com/a/11105831/1143732
+        output.push link_to(image_tag("exception_handler/connect/#{service}.png", title: "Find us on " + service.to_s.titleize), link(service), target: :blank, class: service.to_s)
       end
 
+      output.join("").html_safe #-> ruby returns last line
+    end
 
-    ##################
-
-      private
-
-      def link service #-> bloated way to allow single references in config
-        url = []
-        url.push ExceptionHandler.config.social[:url][service]
-        url.push ExceptionHandler.config.social[service]
-        url.join("/")
+    # HACK Exception Handler Custom App has no access to application routes helper method
+    # Calling `main_app.some_routes` works, but it litters the view
+    def method_missing(method, *args, &block)
+      if (method.to_s.end_with?('_path') || method.to_s.end_with?('_url')) && main_app.respond_to?(method)
+          main_app.send(method, *args, &block)
+      else
+        super
       end
+    end
 
-    ##################
+    def respond_to?(method, include_private = false)
+      if (method.to_s.end_with?('_path') || method.to_s.end_with?('_url')) && main_app.respond_to?(method)
+        true
+      else
+        super
+      end
+    end
+
+    private
+
+    def link service #-> bloated way to allow single references in config
+      url = []
+      url.push ExceptionHandler.config.social[:url][service]
+      url.push ExceptionHandler.config.social[service]
+      url.join("/")
+    end
 
   end
 end

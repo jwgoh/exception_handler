@@ -82,6 +82,12 @@ module ExceptionHandler
       app.config.consider_all_requests_local = false if Rails.env.development? and ExceptionHandler.config.try(:dev)
     end
 
+    initializer :exception_handler do |app|
+      ActiveSupport.on_load :action_controller do
+        helper ExceptionHandler::ApplicationHelper
+      end
+    end
+
   end
 end
 
